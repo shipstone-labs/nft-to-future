@@ -74,11 +74,27 @@ export function LitConnection({ children }: PropsWithChildren<Props>) {
             contractAddress: "",
             standardContractType: "",
             chain: "base",
-            method: "eth_getBalance",
-            parameters: [":userAddress", "latest"],
+            method: "",
+            parameters: [":userAddress"],
+            returnValueTest: {
+              comparator: "=",
+              value: "0x7E07149c5E924FBD5fa9e82E7e49b078c1e230E6",
+            },
+          },
+          { operator: "or" },
+          {
+            conditionType: "operator",
+            operator: "0x7E07149c5E924FBD5fa9e82E7e49b078c1e230E6",
+          },
+          {
+            contractAddress: "",
+            standardContractType: "timestamp",
+            chain: "base",
+            method: "eth_getBlockByNumber",
+            parameters: ["latest"],
             returnValueTest: {
               comparator: ">=",
-              value: "1",
+              value: (Date.now() / 1000).toString(),
             },
           },
         ];
