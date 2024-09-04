@@ -36,7 +36,7 @@ async function run() {
       accessControlConditions,
       ciphertext,
       dataToEncryptHash,
-      chain: NETWORK,
+      chain: "ethereum",
     });
     console.log("Decrypted data:", data);
     const { input, apiKey, orgId, projectId, pinataJwt } = JSON.parse(data);
