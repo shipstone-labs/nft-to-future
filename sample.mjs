@@ -11,12 +11,7 @@ import {
   createSiweMessageWithRecaps,
   generateAuthSig,
 } from "@lit-protocol/auth-helpers";
-import {
-  NETWORK,
-  js,
-  genAuthSig,
-  genSession,
-} from "./src/app/api/request/litAction.js";
+import { NETWORK, js, genAuthSig, genSession } from "./sampleLit.js";
 
 dotenvConfig({ path: ".env.local" });
 dotenvConfig({ path: ".env" });
@@ -67,17 +62,28 @@ const configAccessControlConditions = [
 
 const unifiedAccessControlConditions = [
   {
-    conditionType: "evmBasic",
     contractAddress: "",
     standardContractType: "",
-    chain: "base",
-    method: "eth_getBalance",
-    parameters: [":userAddress", "latest"],
+    chain,
+    method: "",
+    parameters: [":userAddress"],
     returnValueTest: {
-      comparator: ">",
-      value: "0",
+      comparator: "=",
+      value: wallet.address,
     },
   },
+  // {
+  //   conditionType: "evmBasic",
+  //   contractAddress: "",
+  //   standardContractType: "",
+  //   chain: "base",
+  //   method: "eth_getBalance",
+  //   parameters: [":userAddress", "latest"],
+  //   returnValueTest: {
+  //     comparator: ">",
+  //     value: "0",
+  //   },
+  // },
   { conditionType: "operator", operator: "or" },
   {
     conditionType: "evmBasic",

@@ -23,19 +23,6 @@ import { bytesToHex, stringToBytes } from "viem";
 
 // export const runtime = "nodejs";
 
-const configuration = {
-  apiKey: process.env.OPENAI_API_KEY,
-  project: process.env.OPENAI_PROJECT_ID,
-  organization: process.env.OPENAI_ORGANIZATION_ID,
-  dangerouslyAllowBrowser: true,
-};
-
-const openai = new OpenAI(configuration);
-const wallet = new Wallet(
-  process.env.API_KEY as string,
-  ethers.getDefaultProvider("base")
-);
-
 async function pinURLtoIPFS(url: string) {
   const formData = new FormData();
 
@@ -103,7 +90,28 @@ async function calcFrameUrl(url: string) {
   return `https://nft-to-future.com/api/frame/${cid}/${hash}`;
 }
 
+export async function GET(req: NextRequest) {
+  const wallet = new Wallet(
+    process.env.API_KEY as string,
+    ethers.getDefaultProvider("base")
+  );
+  return NextResponse.json({ address: wallet.address });
+}
+
 export async function POST(req: NextRequest) {
+  const configuration = {
+    apiKey: process.env.OPENAI_API_KEY,
+    project: process.env.OPENAI_PROJECT_ID,
+    organization: process.env.OPENAI_ORGANIZATION_ID,
+    dangerouslyAllowBrowser: true,
+  };
+
+  const openai = new OpenAI(configuration);
+  const wallet = new Wallet(
+    process.env.API_KEY as string,
+    ethers.getDefaultProvider("base")
+  );
+
   try {
     const { message, address, date } = (await req.json()) as {
       message: [string, string, AccessControlConditions];

@@ -28,5 +28,5 @@
     ".next/types/**/*.ts",
     "build/types/**/*.ts"
   ],
-  "exclude": ["node_modules", "**/app/api/**/*.ts"]
+  "exclude": ["node_modules"]
 }
