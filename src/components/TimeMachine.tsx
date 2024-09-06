@@ -1,4 +1,9 @@
-import React, { type PropsWithChildren, useEffect, useState } from "react";
+import React, {
+  type PropsWithChildren,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 import { motion } from "framer-motion";
 import TimeAxis from "./TimeAxis"; // Import your TimeAxis component
 
@@ -32,6 +37,7 @@ const TimeMachine = ({
   const [showImage, setShowImage] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [displayDate, setDisplayDate] = useState(new Date());
+  const [imageLoaded, setImageLoaded] = useState(false);
   const FIXED_DURATION = 10000; // 10 seconds duration
 
   useEffect(() => {
@@ -62,23 +68,36 @@ const TimeMachine = ({
     return () => clearInterval(interval);
   }, [targetDate]);
 
+  const onLoaded = useCallback(() => {
+    setImageLoaded(true);
+  }, []);
   return (
-    <div className="relative w-full h-full flex flex-row overflow-hidden">
+    <div className="relative full-minus h-full flex flex-row">
       {/* Left-side main content */}
       <div className="flex-grow flex flex-col items-center justify-center w-full">
         {showImage && imageUrl ? (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.5 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 1 }}
-          >
-            <img
-              src={imageUrl}
-              alt="Time Machine Reveal"
-              className="h-[65%] w-auto object-contain rounded-lg shadow-lg"
-            />
-            {children}
-          </motion.div>
+          <>
+            {!imageLoaded && (
+              <div className="absolute">
+                <div className="loading-spinner" /> {/* Spiral animation */}
+              </div>
+            )}
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 1 }}
+              className={`${!imageLoaded ? "hidden" : ""}`}
+            >
+              <img
+                src={imageUrl}
+                alt="Time Machine Reveal"
+                onLoad={onLoaded}
+                className="h-[65%] w-auto object-contain rounded-lg shadow-lg"
+              />
+            </motion.div>
+            <div className="max-w-full">{children}</div>
+          </>
         ) : (
           <motion.div
             initial={{ opacity: 0 }}

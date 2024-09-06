@@ -8,9 +8,21 @@ import {
   createSiweMessage,
   generateAuthSig,
 } from "@lit-protocol/auth-helpers";
-import { useAccount, useAccountEffect, useSignMessage } from "wagmi";
-import type { SignableMessage } from "viem";
-import { type PropsWithChildren, useCallback, useState } from "react";
+import {
+  useAccount,
+  useAccountEffect,
+  useSignMessage,
+  useWriteContract,
+} from "wagmi";
+import type { AbiItem, SignableMessage } from "viem";
+import {
+  type MouseEvent,
+  type PropsWithChildren,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { MessageForm } from "./MessageForm";
 import TimeMachine from "./TimeMachine";
 
@@ -36,6 +48,28 @@ export function LitConnection({ children }: PropsWithChildren<Props>) {
   const signer = useSignMessage();
   const wallet = useAccount();
   const [showTimeMachine, setShowTimeMachine] = useState(false);
+  const [remoteAddress, setRemoteAddress] = useState<string>();
+  const isCompose =
+    typeof document !== "undefined"
+      ? document.location.search.includes("compose")
+      : false;
+  const [minted, setMinted] = useState<string | null | undefined>();
+  const [transactionHash, setTransactionHash] = useState<string | undefined>();
+  const text = useMemo(
+    () =>
+      `I sent a message to the future to be visible at ${targetDate?.toUTCString()}.`,
+    [targetDate]
+  );
+
+  useEffect(() => {
+    if (!remoteAddress) {
+      fetch("/api/request")
+        .then((res) => res.json())
+        .then(({ address }) => {
+          setRemoteAddress(address);
+        });
+    }
+  }, [remoteAddress]);
 
   const onSend = useCallback(
     async (message: string, date: Date) => {
@@ -106,7 +140,7 @@ export function LitConnection({ children }: PropsWithChildren<Props>) {
                 parameters: [":userAddress"],
                 returnValueTest: {
                   comparator: "=",
-                  value: "0x7E07149c5E924FBD5fa9e82E7e49b078c1e230E6",
+                  value: remoteAddress, // "0x7E07149c5E924FBD5fa9e82E7e49b078c1e230E6",
                 },
               },
               { conditionType: "operator", operator: "or" },
@@ -167,7 +201,7 @@ export function LitConnection({ children }: PropsWithChildren<Props>) {
         console.error("Failed to connect to Lit Network:", error);
       }
     },
-    [signer, wallet, sessionSigsMap]
+    [signer, wallet, sessionSigsMap, remoteAddress]
   );
 
   const onReset = useCallback(() => {
@@ -176,10 +210,111 @@ export function LitConnection({ children }: PropsWithChildren<Props>) {
     setTargetDate(undefined);
   }, []);
 
-  const onMint = useCallback(() => {}, []);
-  const onCast = useCallback(() => {}, []);
-  const onTweet = useCallback(() => {}, []);
-  if (!wallet.isConnected) {
+  const { writeContractAsync } = useWriteContract();
+  const onMint = useCallback(
+    async (e: MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation();
+      if (!wallet?.address) {
+        return;
+      }
+      if (minted === "pending") return;
+      if (minted) {
+        window.open(minted, "_blank");
+        return;
+      }
+      const abi: AbiItem[] = [
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "to",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "amount",
+              type: "uint256",
+            },
+            {
+              internalType: "bytes",
+              name: "data",
+              type: "bytes",
+            },
+          ],
+          name: "mint",
+          outputs: [],
+          stateMutability: "payable",
+          type: "function",
+        },
+      ];
+      // const value: bigint = read.data != null ? read.data : 0n;
+      // await writeContractAsync(
+      //   {
+      //     address: "0x9d4DAaA689C4bF686Af64A9727bE6682F98dC78e",
+      //     account: wallet.data?.account?.address,
+      //     args: [wallet.data?.account?.address, 1, image?.jsonUrl],
+      //     abi,
+      //     value,
+      //     functionName: "mint",
+      //     // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+      //   } as any,
+      //   {
+      //     onSuccess: (transaction) => {
+      //       setTransactionHash(transaction);
+      //     },
+      //     onError: (...args) => {
+      //       console.log("error", args);
+      //       setMinted(null);
+      //     },
+      //   }
+      // );
+      // setMinted("pending");
+    },
+    [minted, wallet]
+  );
+
+  const onCast = useCallback(
+    (e: MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation();
+      if (isCompose) {
+        window.parent.postMessage(
+          {
+            type: "createCast",
+            data: {
+              cast: {
+                text,
+                embeds: [result?.result?.frameUrl],
+              },
+            },
+          },
+          "*"
+        );
+      } else {
+        window.open(
+          `https://warpcast.com/~/compose?embeds[]=${
+            result?.result?.frameUrl
+          }&text=${encodeURIComponent(text)}`,
+          "_blank"
+        );
+      }
+    },
+    [isCompose, result, text]
+  );
+  const onTweet = useCallback(
+    (e: MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation();
+
+      window.open(
+        `https://x.com/intent/tweet?url=${
+          result?.result?.frameUrl
+        }&text=${encodeURIComponent(text)}`,
+        "_blank"
+      );
+    },
+    [result, text]
+  );
+
+  if (!wallet.isConnected || !remoteAddress) {
     return (
       <>
         <h1 className="text-center">
@@ -233,6 +368,9 @@ export function LitConnection({ children }: PropsWithChildren<Props>) {
             >
               Send Another
             </button>
+          </div>
+          <div className="whitespace-pre font-sans text-base overflow-scroll p-4 w-full">
+            {JSON.stringify(result?.result, null, 2)}
           </div>
         </TimeMachine>
       ) : (

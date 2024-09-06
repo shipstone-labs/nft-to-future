@@ -87,7 +87,7 @@ async function calcFrameUrl(url: string) {
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
     .replace(/=+$/, "");
-  return `https://nft-to-future.com/api/frame/${cid}/${hash}`;
+  return `https://nft-to-the-future.shipstone.com/api/frame/${cid}/${hash}`;
 }
 
 export async function GET(req: NextRequest) {
