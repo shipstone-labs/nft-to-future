@@ -1,0 +1,52 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="100%"
+  height="100%"
+  preserveAspectRatio="none"
+  viewBox="0 0 800 400"
+>
+  <!-- Chat Bubbles -->
+  <g fill="none" stroke="currentColor" stroke-width="2" opacity="0.15">
+    <rect x="50" y="50" width="120" height="60" rx="10" ry="10" />
+    <rect x="600" y="60" width="140" height="70" rx="15" ry="15" />
+    <rect x="300" y="150" width="130" height="50" rx="12" ry="12" />
+    <rect x="120" y="250" width="110" height="55" rx="10" ry="10" />
+    <rect x="500" y="300" width="130" height="60" rx="14" ry="14" />
+  </g>
+
+  <!-- Emoji Icons -->
+  <g fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.2">
+    <!-- Smiley Emoji -->
+    <circle cx="90" cy="80" r="10" />
+    <circle cx="85" cy="75" r="1.5" fill="currentColor" />
+    <circle cx="95" cy="75" r="1.5" fill="currentColor" />
+    <path d="M84 82 Q90 88, 96 82" stroke="currentColor" stroke-width="1" fill="none" />
+
+    <!-- Thumbs-Up Emoji -->
+    <rect x="620" y="100" width="12" height="20" rx="2" ry="2" />
+    <rect x="622" y="105" width="5" height="10" rx="1" ry="1" />
+    <path d="M626 110 l5 -10 l-2 5" stroke="currentColor" stroke-width="1" fill="none" />
+
+    <!-- Heart Emoji -->
+    <path
+      d="M250 250 Q 245 240, 255 230 Q 265 240, 255 250 L 250 250"
+      stroke="currentColor"
+    />
+  </g>
+
+  <!-- Floating Lines -->
+  <g stroke="currentColor" stroke-width="0.5" opacity="0.1">
+    <line x1="150" y1="70" x2="600" y2="70" />
+    <line x1="200" y1="150" x2="750" y2="150" />
+    <line x1="50" y1="220" x2="700" y2="220" />
+  </g>
+
+  <!-- Decorative Dots -->
+  <g fill="currentColor" opacity="0.1">
+    <circle cx="300" cy="100" r="5" />
+    <circle cx="400" cy="300" r="5" />
+    <circle cx="500" cy="150" r="5" />
+    <circle cx="200" cy="250" r="5" />
+    <circle cx="650" cy="80" r="5" />
+  </g>
+</svg>

@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { NextApiRequest } from "next/types";
 import { recordEvent } from "../frame/handler";
 
-export const runtime = "edge";
+// export const runtime = "nodejs";
 
 export function POST(req: NextRequest) {
   return NextResponse.json({

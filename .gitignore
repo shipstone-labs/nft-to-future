@@ -34,3 +34,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# test files for sample script.
+.content
+.prompt
+/node_modules_patched/

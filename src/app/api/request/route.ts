@@ -3,17 +3,23 @@ import { type ClientOptions, OpenAI } from "openai";
 import { Base64 } from "js-base64";
 import imageCompression from "browser-image-compression";
 import abi from "./abi.json";
-import { privateKeyToAccount } from "viem/accounts";
 import { recordEvent } from "../frame/handler";
 import { LitNetwork } from "@lit-protocol/constants";
 import { LitContracts } from "@lit-protocol/contracts-sdk";
-import { ethers, Wallet } from "ethers";
-import { LitAbility, LitPKPResource } from "@lit-protocol/auth-helpers";
-import { stringToHex } from "viem";
+import { ethers, toBeHex, Wallet } from "ethers";
+import { LitNodeClient } from "@lit-protocol/lit-node-client";
+import {
+  LitAbility,
+  LitAccessControlConditionResource,
+  LitActionResource,
+  LitPKPResource,
+} from "@lit-protocol/auth-helpers";
+import { genSession, js, NETWORK } from "./litAction";
+import type { AccessControlConditions } from "@lit-protocol/types";
 
-export const runtime = "edge";
+// export const runtime = "nodejs";
 
-const configuration: ClientOptions = {
+const configuration = {
   apiKey: process.env.OPENAI_API_KEY,
   project: process.env.OPENAI_PROJECT_ID,
   organization: process.env.OPENAI_ORGANIZATION_ID,
@@ -21,7 +27,10 @@ const configuration: ClientOptions = {
 };
 
 const openai = new OpenAI(configuration);
-const wallet = new Wallet(process.env.API_KEY as string);
+const wallet = new Wallet(
+  process.env.API_KEY as string,
+  ethers.getDefaultProvider("base")
+);
 
 async function pinURLtoIPFS(url: string) {
   const formData = new FormData();
@@ -92,74 +101,92 @@ async function calcFrameUrl(url: string) {
 
 export async function POST(req: NextRequest) {
   try {
+    const { message, address, date } = (await req.json()) as {
+      message: [string, string, AccessControlConditions];
+      address?: string;
+      date?: number;
+    };
+
     const litNodeClient = new LitNodeClient({
       litNetwork: LitNetwork.DatilDev,
       debug: false,
     });
-
     await litNodeClient.connect();
 
+    const sessionSignatures = await genSession(wallet, litNodeClient, [
+      {
+        resource: new LitAccessControlConditionResource("*"),
+        ability: LitAbility.AccessControlConditionDecryption,
+      },
+    ]);
+
     const litContracts = new LitContracts({
-      signer: wallet,
+      privateKey: process.env.API_KEY as string,
       network: LitNetwork.DatilTest,
       debug: false,
     });
     await litContracts.connect();
 
-    const sessionSignatures = await litNodeClient.getPkpSessionSigs({
-      pkpPublicKey: wallet.signingKey.publicKey,
-      capabilityAuthSigs: [],
-      authMethods: [],
-      resourceAbilityRequests: [
-        {
-          resource: new LitPKPResource("*"),
-          ability: LitAbility.PKPSigning,
-        },
-      ],
-      expiration: new Date(Date.now() + 1000 * 60 * 10).toISOString(), // 10 minutes
+    let _config: [string, string, AccessControlConditions] = [
+      "",
+      "",
+      message[2],
+    ];
+    {
+      const { ciphertext, dataToEncryptHash } = await litNodeClient.encrypt({
+        unifiedAccessControlConditions: message[2],
+        dataToEncrypt: new TextEncoder().encode(
+          JSON.stringify({
+            apiKey: process.env.OPENAI_API_KEY,
+            orgId: process.env.OPENAI_ORGANIZATION_ID,
+            projectId: process.env.OPENAI_PROJECT_ID,
+          })
+        ),
+      });
+      _config = [ciphertext, dataToEncryptHash, message[2]];
+    }
+
+    const accsInput =
+      await LitAccessControlConditionResource.generateResourceString(
+        message[2],
+        message[1]
+      );
+    const accsConfig =
+      await LitAccessControlConditionResource.generateResourceString(
+        message[2].slice(0, 1),
+        _config[1]
+      );
+
+    const sessionForDecryption = await genSession(wallet, litNodeClient, [
+      {
+        resource: new LitActionResource("*"),
+        ability: LitAbility.LitActionExecution,
+      },
+      {
+        resource: new LitAccessControlConditionResource(accsInput),
+        ability: LitAbility.AccessControlConditionDecryption,
+      },
+      {
+        resource: new LitAccessControlConditionResource(accsConfig),
+        ability: LitAbility.AccessControlConditionDecryption,
+      },
+    ]);
+
+    const output = await litNodeClient.executeJs({
+      code: js,
+      // cid: CID,
+      sessionSigs: sessionForDecryption,
+      jsParams: {
+        accessControlConditions: message[2],
+        data: message,
+        config: _config,
+        publicKey: wallet.signingKey.publicKey,
+      },
     });
-
-    const input = (await req.json()) as {
-      encryptedMessage: string;
-      address?: string;
-      futureDate?: number;
-    };
-
-    // console.log("input", input);
-    const { encryptedMessage, address, futureDate = Date.now() } = input;
-
-    const { decryptedMessage: _decodedMessage } = await litNodeClient.decrypt({
-      encryptedMessage,
-      pkpPublicKey: wallet.signingKey.publicKey,
-      sessionSignatures,
-    });
-
-    const decodedMessage = new TextDecoder().decode(_decodedMessage);
-    console.log(decodedMessage);
-
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o", // Use the appropriate model
-      messages: [
-        {
-          role: "user",
-          content: `Create a good looking picture by taking ideas of the following message \`${decodedMessage}\`. Summarize and simplify the text such that it would become a good prompt for image generation. Generate a good looking dark fantasy image. Please return only the prompt text for the image generation. Please describe any well-known characters with your own words for dall-e-3 to use and make sure it doesn't get rejected by the dall-e-safety system.`,
-        },
-      ],
-    });
-
-    const response2 = await openai.images.generate({
-      model: "dall-e-3",
-      prompt: `Generate an image with the following description: ${
-        completion.choices[0].message.content || "there was an error."
-      } and make sure it looks like the scene set in the future.`,
-      response_format: "url",
-      size: "1024x1024",
-      quality: "standard",
-      n: 1,
-    });
-
+    const outputObject = JSON.parse(output.response as string);
+    console.log(output);
     let jsonUrl: string | undefined;
-    const { url } = response2.data[0];
+    const { url } = (output as any) || {};
     let pngUrl: string | undefined = url;
     let frameUrl: string | undefined = url;
     if (url) {
@@ -179,7 +206,7 @@ export async function POST(req: NextRequest) {
         const json = {
           name: "NFT to Future!",
           description: `Shipstone Lab's NTF to Future: Mint an NFT containing a message readable in the future on ${new Date(
-            futureDate
+            new Date(date || Date.now())
           ).toUTCString()}`,
           image: pngUrl,
           decimals: 0,
@@ -203,7 +230,7 @@ export async function POST(req: NextRequest) {
 
         if (jsonUrl) {
           const jsonSrc = `https://ipfs.io/ipfs/${jsonUrl}`;
-          jsonUrl = stringToHex(jsonSrc);
+          jsonUrl = toBeHex(jsonSrc);
           frameUrl = await calcFrameUrl(jsonSrc);
         }
       } catch (error) {

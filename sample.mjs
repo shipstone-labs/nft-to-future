@@ -1,6 +1,6 @@
 // Required Node.js libraries
 import fetch from "node-fetch";
-import { config } from "dotenv";
+import { config as dotenvConfig } from "dotenv";
 import { ethers } from "ethers";
 import { LitNodeClient } from "@lit-protocol/lit-node-client";
 import { LitNetwork } from "@lit-protocol/constants";
@@ -11,155 +11,30 @@ import {
   createSiweMessageWithRecaps,
   generateAuthSig,
 } from "@lit-protocol/auth-helpers";
-import { access } from "fs";
+import {
+  NETWORK,
+  js,
+  genAuthSig,
+  genSession,
+} from "./src/app/api/request/litAction.js";
 
-config({ path: ".env.local" });
-config({ path: ".env" });
+dotenvConfig({ path: ".env.local" });
+dotenvConfig({ path: ".env" });
 
-const NETWORK = "base";
 const CID = "QmNutAr2VGesUPZ7A5vKQzqqHHoPaYDovkwT1ZBVJSuWe6";
 const ONE_WEEK_FROM_NOW = new Date(
   Date.now() + 1000 * 60 * 60 * 24 * 7
 ).toISOString();
 
 // Main function to run the sequence
-async function run() {
-  const NETWORK = "base";
-  try {
-    console.log(
-      "Trying to decrypt",
-      ciphertext,
-      dataToEncryptHash,
-      accessControlConditions
-    );
-    const data = await Lit.Actions.decryptAndCombine({
-      accessControlConditions,
-      ciphertext,
-      dataToEncryptHash,
-      chain: "ethereum",
-    });
-    console.log("Decrypted data:", data);
-    const { input, apiKey, orgId, projectId, pinataJwt } = JSON.parse(data);
-    console.log("Decrypted data:", input, apiKey, orgId, projectId, pinataJwt);
-    const promptQuery = {
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "user",
-          content: `Create a good looking picture by taking ideas of the following message \`${input}\`. Summarize and simplify the text such that it would become a good prompt for image generation. Generate a good looking dark fantasy image. Please return only the prompt text for the image generation. Please describe any well-known characters with your own words for dall-e-3 to use and make sure it doesn't get rejected by the dall-e-safety system.`,
-        },
-      ],
-      temperature: 0.7,
-    };
+const config = [];
+const data = [];
 
-    const promptResponse = await fetch(
-      "https://api.openai.com/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "OpenAI-Organization": orgId,
-          "OpenAI-Project": projectId,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(promptQuery),
-      }
-    );
+console.log("// ----------");
+console.log(js);
+console.log("// ----------");
 
-    const promptData = await promptResponse.json();
-    const prompt = promptData.choices[0].message.content.trim();
-
-    const imageQuery = {
-      model: "dall-e-3",
-      prompt: `Generate an image with the following description: \`${prompt}\` and make sure it looks like the scene set in the future.`,
-      response_format: "url",
-      size: "1024x1024",
-      quality: "standard",
-      n: 1,
-    };
-
-    const imageResponse = await fetch(
-      "https://api.openai.com/v1/images/generations",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "OpenAI-Organization": orgId,
-          "OpenAI-Project": projectId,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(imageQuery),
-      }
-    );
-
-    const imageData = await imageResponse.json();
-    const { url } = imageData.data[0];
-    Lit.Actions.setResponse({ response: url });
-    return url;
-  } catch (error) {
-    console.error("Error during execution:", error);
-    Lit.Actions.setResponse({ response: error });
-  }
-}
-
-const js = `${run.toString()}; run();`;
-
-console.log(process.env.API_KEY, js);
 const wallet = new ethers.Wallet(process.env.API_KEY);
-
-const genAuthSig = async (wallet, client, uri, resources) => {
-  const blockHash = await client.getLatestBlockhash();
-  const message = await createSiweMessageWithRecaps({
-    walletAddress: wallet.address,
-    nonce: blockHash,
-    litNodeClient: client,
-    resources,
-    chain: NETWORK,
-    expiration: ONE_WEEK_FROM_NOW,
-    uri,
-  });
-  const authSig = await generateAuthSig({
-    signer: wallet,
-    toSign: message,
-    address: wallet.address,
-  });
-
-  return authSig;
-};
-
-const genSession = async (wallet, client, resources) => {
-  const sessionSigs = await client.getSessionSigs({
-    chain: NETWORK,
-    resourceAbilityRequests: resources,
-    authNeededCallback: async (params) => {
-      console.log("resourceAbilityRequests:", params.resources);
-
-      if (!params.expiration) {
-        throw new Error("expiration is required");
-      }
-
-      if (!params.resources) {
-        throw new Error("resourceAbilityRequests is required");
-      }
-
-      if (!params.uri) {
-        throw new Error("uri is required");
-      }
-
-      // generate the authSig for the inner signature of the session
-      // we need capabilities to assure that only one api key may be decrypted
-      const authSig = genAuthSig(
-        wallet,
-        client,
-        params.uri,
-        params.resourceAbilityRequests ?? []
-      );
-      return authSig;
-    },
-  });
-
-  return sessionSigs;
-};
 
 const litNodeClient = new LitNodeClient({
   litNetwork: LitNetwork.DatilDev,
@@ -167,7 +42,6 @@ const litNodeClient = new LitNodeClient({
 });
 
 await litNodeClient.connect();
-console.log("Connected to Lit Network");
 
 const sessionSignatures = await genSession(wallet, litNodeClient, [
   {
@@ -175,6 +49,21 @@ const sessionSignatures = await genSession(wallet, litNodeClient, [
     ability: LitAbility.AccessControlConditionDecryption,
   },
 ]);
+
+const configAccessControlConditions = [
+  {
+    conditionType: "evmBasic",
+    contractAddress: "",
+    standardContractType: "",
+    chain: "base",
+    method: "eth_getBalance",
+    parameters: [":userAddress", "latest"],
+    returnValueTest: {
+      comparator: ">",
+      value: "0",
+    },
+  },
+];
 
 const unifiedAccessControlConditions = [
   {
@@ -189,18 +78,6 @@ const unifiedAccessControlConditions = [
       value: "0",
     },
   },
-  // {
-  //   conditionType: "evmBasic",
-  //   contractAddress: "",
-  //   standardContractType: "",
-  //   chain: NETWORK,
-  //   method: "",
-  //   parameters: [":userAddress"],
-  //   returnValueTest: {
-  //     comparator: "=",
-  //     value: wallet.address,
-  //   },
-  // },
   { conditionType: "operator", operator: "or" },
   {
     conditionType: "evmBasic",
@@ -211,57 +88,46 @@ const unifiedAccessControlConditions = [
     parameters: ["latest"],
     returnValueTest: {
       comparator: ">=",
-      value: (Date.now() / 1000).toString(),
+      value: Math.round((Date.now() + 60000) / 1000).toString(),
     },
   },
 ];
 
 // encrypt
-const { ciphertext, dataToEncryptHash } = await litNodeClient.encrypt({
-  unifiedAccessControlConditions,
-  dataToEncrypt: new TextEncoder().encode(
-    JSON.stringify({
-      input: "this is a secret message",
-      apiKey: process.env.OPENAI_API_KEY,
-      orgId: process.env.OPENAI_ORGANIZATION_ID,
-      projectId: process.env.OPENAI_PROJECT_ID,
-      pinataJwt: process.env.PINATA_JWT,
-    })
-  ),
-});
+let _config = [];
+{
+  const { ciphertext, dataToEncryptHash } = await litNodeClient.encrypt({
+    unifiedAccessControlConditions: configAccessControlConditions,
+    dataToEncrypt: new TextEncoder().encode(
+      JSON.stringify({
+        apiKey: process.env.OPENAI_API_KEY,
+        orgId: process.env.OPENAI_ORGANIZATION_ID,
+        projectId: process.env.OPENAI_PROJECT_ID,
+      })
+    ),
+  });
+  _config = [ciphertext, dataToEncryptHash, configAccessControlConditions];
+}
 
-console.log("Encrypted data:", ciphertext, dataToEncryptHash);
+const message = "There is going to be life on Mars.";
+let _input = [];
+{
+  const { ciphertext, dataToEncryptHash } = await litNodeClient.encrypt({
+    unifiedAccessControlConditions,
+    dataToEncrypt: new TextEncoder().encode(message),
+  });
+  _input = [ciphertext, dataToEncryptHash, unifiedAccessControlConditions];
+}
 
-const accessControlConditions = [
-  {
-    contractAddress: "",
-    standardContractType: "",
-    chain: NETWORK,
-    method: "eth_getBalance",
-    parameters: [":userAddress", "latest"],
-    returnValueTest: {
-      comparator: ">",
-      value: "0",
-    },
-  },
-  // {
-  //   conditionType: "evmBasic",
-  //   contractAddress: "",
-  //   standardContractType: "",
-  //   chain: NETWORK,
-  //   method: "",
-  //   parameters: [":userAddress"],
-  //   returnValueTest: {
-  //     comparator: "=",
-  //     value: wallet.address,
-  //   },
-  // },
-];
-
-const accsResourceString =
+const accsInput =
   await LitAccessControlConditionResource.generateResourceString(
-    accessControlConditions,
-    dataToEncryptHash
+    unifiedAccessControlConditions,
+    _input[1]
+  );
+const accsConfig =
+  await LitAccessControlConditionResource.generateResourceString(
+    unifiedAccessControlConditions,
+    _config[1]
   );
 
 const sessionForDecryption = await genSession(wallet, litNodeClient, [
@@ -270,7 +136,11 @@ const sessionForDecryption = await genSession(wallet, litNodeClient, [
     ability: LitAbility.LitActionExecution,
   },
   {
-    resource: new LitAccessControlConditionResource(accsResourceString),
+    resource: new LitAccessControlConditionResource(accsInput),
+    ability: LitAbility.AccessControlConditionDecryption,
+  },
+  {
+    resource: new LitAccessControlConditionResource(accsConfig),
     ability: LitAbility.AccessControlConditionDecryption,
   },
 ]);
@@ -281,12 +151,37 @@ const output = await litNodeClient.executeJs({
   sessionSigs: sessionForDecryption,
   chain: NETWORK,
   jsParams: {
-    accessControlConditions,
-    ciphertext,
-    dataToEncryptHash,
+    accessControlConditions: unifiedAccessControlConditions,
+    data: _input,
+    config: _config,
     publicKey: wallet.signingKey.publicKey,
   },
 });
 console.log("Output:", output);
-// Run the main function
-// await run(litNodeClient, ciphertext, dataToEncryptHash);
+{
+  const {
+    message: [ciphertext, dataToEncryptHash],
+    url,
+  } = JSON.parse(output.response);
+  console.log(ciphertext, dataToEncryptHash, url);
+
+  for (const t of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) {
+    console.log("trying", t);
+    try {
+      const { decryptedData } = await litNodeClient.decrypt({
+        accessControlConditions: unifiedAccessControlConditions.slice(2),
+        ciphertext,
+        sessionSigs: sessionSignatures,
+        dataToEncryptHash,
+        chain: NETWORK,
+      });
+      console.log(new TextDecoder().decode(decryptedData));
+      break;
+    } catch (error) {
+      console.error(error.message);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 10000));
+  }
+}
+
+process.exit();

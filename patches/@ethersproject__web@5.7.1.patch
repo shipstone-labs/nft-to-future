@@ -1,0 +1,39 @@
+diff --git a/lib/browser-geturl.js b/lib/browser-geturl.js
+index 7ef6c6ef6aef115229aa10f46d4162807efa6126..d7f9b01ab5539b04f5a9e29caf65acacb86ad67f 100644
+--- a/lib/browser-geturl.js
++++ b/lib/browser-geturl.js
+@@ -57,7 +57,7 @@ function getUrl(href, options) {
+                         request.cache = "no-cache"; // *default, no-cache, reload, force-cache, only-if-cached
+                         request.credentials = "same-origin"; // include, *same-origin, omit
+                         request.redirect = "follow"; // manual, *follow, error
+-                        request.referrer = "client"; // no-referrer, *client
++                        request.referrer = "about://client"; // no-referrer, *client
+                     }
+                     ;
+                     if (options.fetchOptions != null) {
+diff --git a/lib.esm/geturl.js b/lib.esm/geturl.js
+index 67395d018d60f05304b4c5eaf644442f4ae09e56..2c31877d3a24dc0c03e67645e5e353b18d3ae088 100644
+--- a/lib.esm/geturl.js
++++ b/lib.esm/geturl.js
+@@ -24,7 +24,7 @@ export function getUrl(href, options) {
+             request.cache = "no-cache"; // *default, no-cache, reload, force-cache, only-if-cached
+             request.credentials = "same-origin"; // include, *same-origin, omit
+             request.redirect = "follow"; // manual, *follow, error
+-            request.referrer = "client"; // no-referrer, *client
++            request.referrer = "about://client"; // no-referrer, *client
+         }
+         ;
+         if (options.fetchOptions != null) {
+diff --git a/src.ts/browser-geturl.ts b/src.ts/browser-geturl.ts
+index 88d5424ab6fe8ae91a9192c266eae3ddfaa6b290..69c8d3c70250e23a1b29ec8ad4b2ebd09b87a972 100644
+--- a/src.ts/browser-geturl.ts
++++ b/src.ts/browser-geturl.ts
+@@ -20,7 +20,7 @@ export async function getUrl(href: string, options?: Options): Promise<GetUrlRes
+         request.cache = <RequestCache>"no-cache";        // *default, no-cache, reload, force-cache, only-if-cached
+         request.credentials = <RequestCredentials>"same-origin";  // include, *same-origin, omit
+         request.redirect = <RequestRedirect>"follow";    // manual, *follow, error
+-        request.referrer = "client";                     // no-referrer, *client
++        request.referrer = "about://client";                     // no-referrer, *client
+     };
+ 
+     if (options.fetchOptions != null) {
