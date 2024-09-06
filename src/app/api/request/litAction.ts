@@ -84,7 +84,7 @@ async function run() {
       });
     Lit.Actions.setResponse({
       response: JSON.stringify({
-        message: [_ciphertext, _dataToEncryptHash],
+        message: [_ciphertext, _dataToEncryptHash, data[2].slice(2)],
         url,
       }),
     });

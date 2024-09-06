@@ -1,4 +1,25 @@
 /** @type {import('next').NextConfig} */
+
+import { appConfig } from "./src/app/config.mjs";
+import fs from "node:fs";
+
+const manifest = {
+  name: appConfig.appName,
+  short_name: appConfig.appName,
+  icons: appConfig.icons.map((icon) => ({
+    src: icon.url,
+    sizes: icon.sizes,
+    type: icon.type || "image/png",
+  })),
+  theme_color: appConfig.themeColor,
+  background_color: appConfig.themeColor,
+  display: "standalone",
+  start_url: "/",
+};
+
+fs.writeFileSync("public/manifest.json", JSON.stringify(manifest, null, 2));
+console.log("manifest.json has been generated!");
+
 const nextConfig = {
   distDir: "build",
   webpack: (config, { isServer }) => {

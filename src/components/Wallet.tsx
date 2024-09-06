@@ -46,7 +46,10 @@ export default function Wallet({ children }: PropsWithChildren<{}>) {
               </div>
             </div>
           </header>
-          <div className="pt-16">{children}</div>
+          <div className="h-16" />
+          <div className="flex-grow flex flex-row w-100 min-h-screen">
+            <div className="flex-grow flex flex-col w-full">{children}</div>
+          </div>
         </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>

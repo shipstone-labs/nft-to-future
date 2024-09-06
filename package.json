@@ -14,6 +14,7 @@
     "@babel/preset-typescript": "^7.24.7",
     "@ethersproject/abstract-provider": "^5.7.0",
     "@ethersproject/bytes": "^5.7.0",
+    "@ethersproject/logger": "^5.7.0",
     "@ethersproject/web": "^5.7.1",
     "@lit-protocol/auth-helpers": "^6.4.10",
     "@lit-protocol/constants": "^6.4.10",

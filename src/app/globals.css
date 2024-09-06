@@ -13,3 +13,13 @@
   opacity: 0.1;
   z-index: -1;
 }
+
+html, body, #__next {
+  height: 100%;
+}
+
+[data-rk] {
+  min-height: 100vh; /* Full viewport height */
+  display: flex; /* Flexbox to center content if needed */
+  flex-direction: column; /* Ensure the content flows vertically */
+}

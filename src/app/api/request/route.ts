@@ -15,7 +15,11 @@ import {
   LitPKPResource,
 } from "@lit-protocol/auth-helpers";
 import { genSession, js, NETWORK } from "./litAction";
-import type { AccessControlConditions } from "@lit-protocol/types";
+import type {
+  AccessControlConditions,
+  ExecuteJsResponse,
+} from "@lit-protocol/types";
+import { bytesToHex, stringToBytes } from "viem";
 
 // export const runtime = "nodejs";
 
@@ -107,91 +111,97 @@ export async function POST(req: NextRequest) {
       date?: number;
     };
 
+    let output: ExecuteJsResponse;
     const litNodeClient = new LitNodeClient({
       litNetwork: LitNetwork.DatilDev,
       debug: false,
     });
     await litNodeClient.connect();
 
-    const sessionSignatures = await genSession(wallet, litNodeClient, [
-      {
-        resource: new LitAccessControlConditionResource("*"),
-        ability: LitAbility.AccessControlConditionDecryption,
-      },
-    ]);
+    try {
+      const sessionSignatures = await genSession(wallet, litNodeClient, [
+        {
+          resource: new LitAccessControlConditionResource("*"),
+          ability: LitAbility.AccessControlConditionDecryption,
+        },
+      ]);
 
-    const litContracts = new LitContracts({
-      privateKey: process.env.API_KEY as string,
-      network: LitNetwork.DatilTest,
-      debug: false,
-    });
-    await litContracts.connect();
-
-    let _config: [string, string, AccessControlConditions] = [
-      "",
-      "",
-      message[2],
-    ];
-    {
-      const { ciphertext, dataToEncryptHash } = await litNodeClient.encrypt({
-        unifiedAccessControlConditions: message[2],
-        dataToEncrypt: new TextEncoder().encode(
-          JSON.stringify({
-            apiKey: process.env.OPENAI_API_KEY,
-            orgId: process.env.OPENAI_ORGANIZATION_ID,
-            projectId: process.env.OPENAI_PROJECT_ID,
-          })
-        ),
+      const litContracts = new LitContracts({
+        privateKey: process.env.API_KEY as string,
+        network: LitNetwork.DatilTest,
+        debug: false,
       });
-      _config = [ciphertext, dataToEncryptHash, message[2]];
-    }
+      await litContracts.connect();
 
-    const accsInput =
-      await LitAccessControlConditionResource.generateResourceString(
+      let _config: [string, string, AccessControlConditions] = [
+        "",
+        "",
         message[2],
-        message[1]
-      );
-    const accsConfig =
-      await LitAccessControlConditionResource.generateResourceString(
-        message[2].slice(0, 1),
-        _config[1]
-      );
+      ];
+      {
+        const { ciphertext, dataToEncryptHash } = await litNodeClient.encrypt({
+          unifiedAccessControlConditions: message[2],
+          dataToEncrypt: new TextEncoder().encode(
+            JSON.stringify({
+              apiKey: process.env.OPENAI_API_KEY,
+              orgId: process.env.OPENAI_ORGANIZATION_ID,
+              projectId: process.env.OPENAI_PROJECT_ID,
+            })
+          ),
+        });
+        _config = [ciphertext, dataToEncryptHash, message[2]];
+      }
 
-    const sessionForDecryption = await genSession(wallet, litNodeClient, [
-      {
-        resource: new LitActionResource("*"),
-        ability: LitAbility.LitActionExecution,
-      },
-      {
-        resource: new LitAccessControlConditionResource(accsInput),
-        ability: LitAbility.AccessControlConditionDecryption,
-      },
-      {
-        resource: new LitAccessControlConditionResource(accsConfig),
-        ability: LitAbility.AccessControlConditionDecryption,
-      },
-    ]);
+      const accsInput =
+        await LitAccessControlConditionResource.generateResourceString(
+          message[2],
+          message[1]
+        );
+      const accsConfig =
+        await LitAccessControlConditionResource.generateResourceString(
+          message[2].slice(0, 1),
+          _config[1]
+        );
 
-    const output = await litNodeClient.executeJs({
-      code: js,
-      // cid: CID,
-      sessionSigs: sessionForDecryption,
-      jsParams: {
-        accessControlConditions: message[2],
-        data: message,
-        config: _config,
-        publicKey: wallet.signingKey.publicKey,
-      },
-    });
-    const outputObject = JSON.parse(output.response as string);
-    console.log(output);
+      const sessionForDecryption = await genSession(wallet, litNodeClient, [
+        {
+          resource: new LitActionResource("*"),
+          ability: LitAbility.LitActionExecution,
+        },
+        {
+          resource: new LitAccessControlConditionResource(accsInput),
+          ability: LitAbility.AccessControlConditionDecryption,
+        },
+        {
+          resource: new LitAccessControlConditionResource(accsConfig),
+          ability: LitAbility.AccessControlConditionDecryption,
+        },
+      ]);
+
+      output = await litNodeClient.executeJs({
+        code: js,
+        // cid: CID,
+        sessionSigs: sessionForDecryption,
+        jsParams: {
+          accessControlConditions: message[2],
+          data: message,
+          config: _config,
+          publicKey: wallet.signingKey.publicKey,
+        },
+      });
+    } finally {
+      await litNodeClient.disconnect();
+    }
+    const { message: _message, url: _imageUrl } = JSON.parse(
+      output.response as string
+    );
     let jsonUrl: string | undefined;
-    const { url } = (output as any) || {};
-    let pngUrl: string | undefined = url;
-    let frameUrl: string | undefined = url;
-    if (url) {
+    let jsonData: string | undefined;
+    let pngUrl: string | undefined;
+    let frameUrl: string | undefined;
+    if (_imageUrl) {
       try {
-        const imageFile = await pinURLtoIPFS(url);
+        const imageFile = await pinURLtoIPFS(_imageUrl);
         if (imageFile) {
           pngUrl = `https://ipfs.io/ipfs/${imageFile.IpfsHash}`;
           frameUrl = await calcFrameUrl(pngUrl);
@@ -201,7 +211,7 @@ export async function POST(req: NextRequest) {
       }
     }
     let transaction: `0x${string}` | undefined;
-    if (url && pngUrl) {
+    if (_imageUrl && pngUrl) {
       try {
         const json = {
           name: "NFT to Future!",
@@ -229,9 +239,9 @@ export async function POST(req: NextRequest) {
         ({ IpfsHash: jsonUrl } = (await pinJSONtoIPFS(json)) || {});
 
         if (jsonUrl) {
-          const jsonSrc = `https://ipfs.io/ipfs/${jsonUrl}`;
-          jsonUrl = toBeHex(jsonSrc);
-          frameUrl = await calcFrameUrl(jsonSrc);
+          jsonUrl = `https://ipfs.io/ipfs/${jsonUrl}`;
+          jsonData = bytesToHex(stringToBytes(jsonUrl));
+          frameUrl = await calcFrameUrl(jsonUrl);
         }
       } catch (error) {
         console.error(error);
@@ -241,10 +251,12 @@ export async function POST(req: NextRequest) {
       {
         done: true,
         result: {
-          url,
           jsonUrl,
+          jsonData,
           pngUrl,
           frameUrl,
+          message: _message,
+          date,
         },
       },
       { status: 200 }
