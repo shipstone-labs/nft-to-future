@@ -56,16 +56,16 @@ const TimeMachine = ({
     setImageLoaded(true);
   }, []);
   return (
-    <div className="relative full-minus h-full flex flex-row">
+    <div className="relative h-full flex flex-row">
       {/* Left-side main content */}
-      <div className="flex-grow flex flex-col items-center justify-center w-full">
+      <div className="flex-grow flex flex-col items-center w-full">
         {showImage && imageUrl ? (
           <>
-            <div className="relative flex justify-center items-center h-[50%] w-auto">
+            <div className="relative flex items-center justify-center h-[50%] w-auto">
               {/* Frame to show where the image will be */}
 
               {!imageLoaded && (
-                <div className="absolute flex justify-center items-center">
+                <div className="absolute flex items-center">
                   <div className="loading-spinner animate-spin w-12 h-12 border-4 border-t-transparent border-gray-600 rounded-full" />
                 </div>
               )}
@@ -76,7 +76,7 @@ const TimeMachine = ({
                 transition={{ duration: 1 }}
                 className={`${
                   !imageLoaded ? "hidden" : ""
-                } relative z-10 h-[75%] w-auto inset-0 border-4 border-gray-300 rounded-lg shadow-lg`}
+                } relative z-10 h-[75%] w-auto border-4 border-gray-300 rounded-lg shadow-lg`}
               >
                 <img
                   src={imageUrl.replace("https://ipfs.io/ipfs/", "/api/proxy/")}
@@ -87,14 +87,15 @@ const TimeMachine = ({
               </motion.div>
             </div>
 
-            <div className="max-w-full">{children}</div>
+            {/* Adjust for children */}
+            <div className="max-w-full flex-grow flex-shrink">{children}</div>
           </>
         ) : (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5 }}
-            className="text-center"
+            className="text-center flex-grow flex items-center justify-center"
           >
             <h1 className="text-3xl font-bold text-gray-800">
               Safely encrypting your message using LIT Protocol to be time
@@ -108,15 +109,21 @@ const TimeMachine = ({
       </div>
 
       {/* Right-side Time Axis */}
-      <div className="w-20 relative">{showImage ? null : <TimeAxis />}</div>
+      {showImage ? null : (
+        <div className="w-20 relative">
+          <TimeAxis />
+        </div>
+      )}
 
       {/* Bottom right display of date/time */}
-      <div className="absolute bottom-4 right-4 text-sm text-gray-600">
-        <div>
-          Date: {displayDate.toLocaleDateString()}{" "}
-          {displayDate.toLocaleTimeString()}
+      {showImage ? null : (
+        <div className="absolute bottom-4 right-4 text-sm text-gray-600">
+          <div>
+            Date: {displayDate.toLocaleDateString()}{" "}
+            {displayDate.toLocaleTimeString()}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
