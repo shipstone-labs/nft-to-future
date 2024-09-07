@@ -11,7 +11,7 @@ const TimeAxis = () => {
           // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
           key={i}
           className={`w-1 ${
-            i % 5 === 0 ? "h-6 w-8 bg-gray-700" : "h-6 w-6 bg-gray-500"
+            i % 5 === 0 ? "h-1 w-8 bg-gray-700" : "h-2 w-6 bg-gray-500"
           }`}
           initial={{ y: 100 }}
           animate={{ y: -200 }}

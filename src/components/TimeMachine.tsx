@@ -10,28 +10,13 @@ import TimeAxis from "./TimeAxis"; // Import your TimeAxis component
 type Props = {
   targetDate?: Date;
   imageUrl?: string;
-  waiting?: boolean;
-};
-
-const PaperPlaneAnimation = () => {
-  return (
-    <motion.div
-      className="relative"
-      initial={{ x: "-100vw", rotate: 0 }} // Start off-screen to the left
-      animate={{ x: "100vw", rotate: 20 }} // Fly across the screen to the right
-      // biome-ignore lint/style/useNumberNamespace: <explanation>
-      transition={{ duration: 4, ease: "easeInOut", repeat: Infinity }} // Customize animation duration and repeat
-    >
-      <span role="img" aria-label="Paper Plane" className="text-6xl">
-        🛫
-      </span>
-    </motion.div>
-  );
+  transmitting?: boolean;
 };
 
 const TimeMachine = ({
   targetDate,
   imageUrl,
+  transmitting,
   children,
 }: PropsWithChildren<Props>) => {
   const [showImage, setShowImage] = useState(false);
@@ -40,7 +25,7 @@ const TimeMachine = ({
   const FIXED_DURATION = 20000; // 10 seconds duration
 
   useEffect(() => {
-    if (!targetDate) {
+    if (!targetDate || !transmitting) {
       return;
     }
 
@@ -66,7 +51,7 @@ const TimeMachine = ({
 
     const interval = setInterval(updateCountdown, 100);
     return () => clearInterval(interval);
-  }, [targetDate]);
+  }, [targetDate, transmitting]);
 
   const onLoaded = useCallback(() => {
     setImageLoaded(true);
@@ -77,25 +62,32 @@ const TimeMachine = ({
       <div className="flex-grow flex flex-col items-center justify-center w-full">
         {showImage && imageUrl ? (
           <>
-            {!imageLoaded && (
-              <div className="absolute">
-                <div className="loading-spinner" /> {/* Spiral animation */}
-              </div>
-            )}
+            <div className="relative flex justify-center items-center h-[50%] w-auto">
+              {/* Frame to show where the image will be */}
 
-            <motion.div
-              initial={{ opacity: 0, scale: 0.5 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 1 }}
-              className={`${!imageLoaded ? "hidden" : ""}`}
-            >
-              <img
-                src={imageUrl.replace("https://ipfs.io/ipfs/", "/api/proxy/")}
-                alt="Time Machine Reveal"
-                onLoad={onLoaded}
-                className="h-[65%] w-auto object-contain rounded-lg shadow-lg"
-              />
-            </motion.div>
+              {!imageLoaded && (
+                <div className="absolute flex justify-center items-center">
+                  <div className="loading-spinner animate-spin w-12 h-12 border-4 border-t-transparent border-gray-600 rounded-full" />
+                </div>
+              )}
+
+              <motion.div
+                initial={{ opacity: 0, scale: 0.5 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 1 }}
+                className={`${
+                  !imageLoaded ? "hidden" : ""
+                } relative z-10 h-[75%] w-auto inset-0 border-4 border-gray-300 rounded-lg shadow-lg`}
+              >
+                <img
+                  src={imageUrl.replace("https://ipfs.io/ipfs/", "/api/proxy/")}
+                  alt="Time Machine Reveal"
+                  onLoad={onLoaded}
+                  className="h-full w-auto object-contain rounded-lg shadow-lg"
+                />
+              </motion.div>
+            </div>
+
             <div className="max-w-full">{children}</div>
           </>
         ) : (
@@ -105,13 +97,12 @@ const TimeMachine = ({
             transition={{ duration: 0.5 }}
             className="text-center"
           >
-            {/* Paper plane flying animation */}
-            <PaperPlaneAnimation />
-
-            <h1 className="text-4xl font-bold text-gray-800">
-              Safely encrypting your message using LIT Protocol to be only
-              decryptable after the date you specified. Along the way creating a
-              nice looking image for your NFT.
+            <h1 className="text-3xl font-bold text-gray-800">
+              Safely encrypting your message using LIT Protocol to be time
+              locked and unreadable until {displayDate.toLocaleDateString()}{" "}
+              {displayDate.toLocaleTimeString()}. Along the way creating a nice
+              looking image for your NFT and preparing it ready for minting into
+              your wallet.
             </h1>
           </motion.div>
         )}

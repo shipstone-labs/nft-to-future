@@ -12,9 +12,10 @@ import {
   useAccount,
   useAccountEffect,
   useSignMessage,
+  useWaitForTransactionReceipt,
   useWriteContract,
 } from "wagmi";
-import type { AbiItem, SignableMessage } from "viem";
+import { decodeEventLog, type AbiItem, type SignableMessage } from "viem";
 import {
   type MouseEvent,
   type PropsWithChildren,
@@ -35,6 +36,7 @@ type Result = {
     date: number;
     jsonUrl: string;
     jsonData: string;
+    jsonSignature: string;
     pngUrl: string;
     frameUrl: string;
     external_url: string;
@@ -45,6 +47,7 @@ export function LitConnection({ children }: PropsWithChildren<Props>) {
   const [sessionSigsMap, setSessionSigsMap] = useState<SessionSigsMap | null>();
   const [result, setResult] = useState<Result>();
   const [sending, setSending] = useState(false);
+  const [transmitting, setTransmitting] = useState(false);
   const [targetDate, setTargetDate] = useState<Date>();
   const signer = useSignMessage();
   const wallet = useAccount();
@@ -87,6 +90,7 @@ export function LitConnection({ children }: PropsWithChildren<Props>) {
         console.log("Connected to Lit Network");
 
         let _sessionSignatures = sessionSigsMap;
+        // biome-ignore lint/correctness/noUnreachable: <explanation>
         for (let i = 0; i < 2; i++) {
           try {
             if (!_sessionSignatures) {
@@ -174,6 +178,7 @@ export function LitConnection({ children }: PropsWithChildren<Props>) {
               address: wallet.address,
               date: date.getTime(),
             };
+            setTransmitting(true);
             const output = await fetch("/api/request", {
               method: "POST",
               headers: {
@@ -188,16 +193,19 @@ export function LitConnection({ children }: PropsWithChildren<Props>) {
             });
             setResult(output);
             setSending(false);
+            setTransmitting(false);
             litNodeClient.disconnect();
             break;
           } catch (error) {
             // Try again if login was previously persisted but possibly expired.
             _sessionSignatures = null;
             setSessionSigsMap(null);
+            throw error;
           }
         }
       } catch (error) {
         setSending(false);
+        setTransmitting(false);
         console.error("Failed to connect to Lit Network:", error);
       }
     },
@@ -211,17 +219,16 @@ export function LitConnection({ children }: PropsWithChildren<Props>) {
   }, []);
 
   const { writeContractAsync } = useWriteContract();
-  const onMint = useCallback(
-    async (e: MouseEvent<HTMLButtonElement>) => {
-      e.stopPropagation();
-      if (!wallet?.address) {
+  useEffect(() => {
+    const doMint = async () => {
+      if (
+        !wallet?.address ||
+        !result?.result?.jsonData ||
+        !result?.result?.jsonSignature
+      ) {
         return;
       }
-      if (minted === "pending") return;
-      if (minted) {
-        window.open(minted, "_blank");
-        return;
-      }
+      if (minted) return;
       const abi: AbiItem[] = [
         {
           inputs: [
@@ -231,47 +238,108 @@ export function LitConnection({ children }: PropsWithChildren<Props>) {
               type: "address",
             },
             {
-              internalType: "uint256",
-              name: "amount",
-              type: "uint256",
+              internalType: "bytes",
+              name: "data",
+              type: "bytes",
             },
             {
               internalType: "bytes",
-              name: "data",
+              name: "signature",
               type: "bytes",
             },
           ],
           name: "mint",
           outputs: [],
-          stateMutability: "payable",
+          stateMutability: "nonpayable",
           type: "function",
         },
       ];
-      // const value: bigint = read.data != null ? read.data : 0n;
-      // await writeContractAsync(
-      //   {
-      //     address: "0x9d4DAaA689C4bF686Af64A9727bE6682F98dC78e",
-      //     account: wallet.data?.account?.address,
-      //     args: [wallet.data?.account?.address, 1, image?.jsonUrl],
-      //     abi,
-      //     value,
-      //     functionName: "mint",
-      //     // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-      //   } as any,
-      //   {
-      //     onSuccess: (transaction) => {
-      //       setTransactionHash(transaction);
-      //     },
-      //     onError: (...args) => {
-      //       console.log("error", args);
-      //       setMinted(null);
-      //     },
-      //   }
-      // );
-      // setMinted("pending");
-    },
-    [minted, wallet]
-  );
+      setMinted("pending");
+      await writeContractAsync(
+        {
+          address: "0xa7403DD367290527BF390b0a50D66BB9920d22Ff",
+          account: wallet.address,
+          args: [
+            wallet.address,
+            result?.result?.jsonData,
+            result?.result?.jsonSignature,
+          ],
+          abi,
+          functionName: "mint",
+          // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+        } as any,
+        {
+          onSuccess: (transaction) => {
+            setTransactionHash(transaction);
+          },
+          onError: (...args) => {
+            console.log("error", args);
+            setMinted("error");
+          },
+        }
+      );
+    };
+    doMint();
+  }, [minted, wallet, result, writeContractAsync]);
+  const waitResults = useWaitForTransactionReceipt({
+    hash: transactionHash as `0x${string}`,
+    confirmations: 2,
+  });
+  useEffect(() => {
+    if (waitResults.data?.status === "success") {
+      const log = waitResults?.data?.logs[0];
+      const info = log
+        ? decodeEventLog({
+            ...log,
+            abi: [
+              {
+                anonymous: false,
+                inputs: [
+                  {
+                    indexed: true,
+                    internalType: "address",
+                    name: "operator",
+                    type: "address",
+                  },
+                  {
+                    indexed: true,
+                    internalType: "address",
+                    name: "from",
+                    type: "address",
+                  },
+                  {
+                    indexed: true,
+                    internalType: "address",
+                    name: "to",
+                    type: "address",
+                  },
+                  {
+                    indexed: false,
+                    internalType: "uint256",
+                    name: "id",
+                    type: "uint256",
+                  },
+                  {
+                    indexed: false,
+                    internalType: "uint256",
+                    name: "value",
+                    type: "uint256",
+                  },
+                ],
+                name: "TransferSingle",
+                type: "event",
+              },
+            ],
+          })
+        : null;
+      setMinted(
+        `https://opensea.io/assets/base/${log.address || ""}/${
+          info?.args?.id || ""
+        }`
+      );
+      setTransactionHash(undefined);
+    }
+  }, [waitResults]);
 
   const onCast = useCallback(
     (e: MouseEvent<HTMLButtonElement>) => {
@@ -317,7 +385,7 @@ export function LitConnection({ children }: PropsWithChildren<Props>) {
   if (!wallet.isConnected || !remoteAddress) {
     return (
       <>
-        <h1 className="text-center">
+        <h1 className="text-center text-3xl">
           Please connect a wallet on base with some funds to be able to mint
           your NFT to the future with a personalized message to be made public
           at a future date and time.
@@ -328,17 +396,31 @@ export function LitConnection({ children }: PropsWithChildren<Props>) {
   return (
     <>
       {showTimeMachine ? (
-        <TimeMachine targetDate={targetDate} imageUrl={result?.result?.pngUrl}>
+        <TimeMachine
+          targetDate={targetDate}
+          imageUrl={result?.result?.pngUrl}
+          transmitting={transmitting}
+        >
           <div className="flex flex-row justify-center space-x-4 mt-4">
-            {result?.result?.jsonData ? (
-              <button
-                type="button"
-                disabled={sending}
-                onClick={onMint}
+            {minted === "pending" ? (
+              <div className="flex items-center space-x-2">
+                Assembling and minting your NFT to the future...
+                <div className="animate-pulse">🔨</div>
+              </div>
+            ) : minted === "error" ? (
+              <div className="flex items-center space-x-2">
+                Failed to mint your NFT to the future. Please try again.
+                <div>😢</div>
+              </div>
+            ) : minted ? (
+              <a
+                href={minted}
+                target="_blank"
                 className="flex items-center px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg shadow hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:opacity-70"
+                rel="noreferrer"
               >
-                Mint
-              </button>
+                View on OpenSea
+              </a>
             ) : null}
             {result?.result?.frameUrl ? (
               <button
@@ -362,7 +444,10 @@ export function LitConnection({ children }: PropsWithChildren<Props>) {
             ) : null}
             {result?.result?.external_url ? (
               <a
-                href={result?.result?.external_url}
+                href={result?.result?.external_url.replace(
+                  "https://nft-to-the-future.shipstone.com/",
+                  `${document.location.origin}/`
+                )}
                 target="_blank"
                 className="flex items-center px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg shadow hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:opacity-70"
                 rel="noreferrer"
@@ -379,9 +464,9 @@ export function LitConnection({ children }: PropsWithChildren<Props>) {
               Send Another
             </button>
           </div>
-          <div className="whitespace-pre font-sans text-base overflow-scroll p-4 w-full">
+          {/* <div className="whitespace-pre font-sans text-base overflow-scroll p-4 w-full">
             {JSON.stringify(result?.result, null, 2)}
-          </div>
+          </div> */}
         </TimeMachine>
       ) : (
         <MessageForm

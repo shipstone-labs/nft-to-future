@@ -5,7 +5,7 @@ import imageCompression from "browser-image-compression";
 import abi from "./abi.json";
 import { LitNetwork } from "@lit-protocol/constants";
 import { LitContracts } from "@lit-protocol/contracts-sdk";
-import { ethers, toBeHex, Wallet } from "ethers";
+import { ethers, toBeHex, verifyMessage, Wallet } from "ethers";
 import { LitNodeClient } from "@lit-protocol/lit-node-client";
 import {
   LitAbility,
@@ -208,6 +208,7 @@ export async function POST(req: NextRequest) {
     let pngUrl: string | undefined;
     let external_url: string | undefined;
     let frameUrl: string | undefined;
+    let jsonSignature: string | undefined;
     if (_imageUrl) {
       try {
         const imageFile = await pinURLtoIPFS(_imageUrl);
@@ -280,6 +281,10 @@ export async function POST(req: NextRequest) {
         if (jsonUrl) {
           jsonUrl = `https://ipfs.io/ipfs/${jsonUrl}`;
           jsonData = bytesToHex(stringToBytes(jsonUrl));
+          jsonSignature = await wallet.signMessage(jsonUrl);
+
+          const test = verifyMessage(jsonUrl, jsonSignature);
+          console.log(test, wallet.address);
         }
       } catch (error) {
         console.error(error);
@@ -291,6 +296,8 @@ export async function POST(req: NextRequest) {
         result: {
           jsonUrl,
           jsonData,
+          jsonSignature,
+          address: wallet.address,
           pngUrl,
           messageJsonUrl,
           external_url,
