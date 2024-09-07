@@ -284,6 +284,9 @@ export async function POST(req: NextRequest) {
           jsonUrl = `https://ipfs.io/ipfs/${jsonUrl}`;
           jsonData = bytesToHex(stringToBytes(jsonUrl));
           jsonSignature = await wallet.signMessage(jsonUrl);
+
+          const test = verifyMessage(jsonUrl, jsonSignature);
+          console.log(test, wallet.address, jsonSignature);
         }
       } catch (error) {
         console.error(error);

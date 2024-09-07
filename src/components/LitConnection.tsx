@@ -15,7 +15,12 @@ import {
   useWaitForTransactionReceipt,
   useWriteContract,
 } from "wagmi";
-import { decodeEventLog, type AbiItem, type SignableMessage } from "viem";
+import {
+  decodeEventLog,
+  verifyMessage,
+  type AbiItem,
+  type SignableMessage,
+} from "viem";
 import {
   type MouseEvent,
   type PropsWithChildren,
@@ -397,11 +402,7 @@ export function LitConnection({ children }: PropsWithChildren<Props>) {
   return (
     <>
       {showTimeMachine ? (
-        <TimeMachine
-          targetDate={targetDate}
-          imageUrl={result?.result?.pngUrl}
-          transmitting={transmitting}
-        >
+        <TimeMachine targetDate={targetDate} imageUrl={result?.result?.pngUrl}>
           <div className="flex flex-row justify-center space-x-4 mt-4">
             {minted === "pending" ? (
               <div className="flex items-center space-x-2">

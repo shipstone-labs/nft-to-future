@@ -2,6 +2,7 @@ import React, {
   type PropsWithChildren,
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 import { motion } from "framer-motion";
@@ -16,20 +17,18 @@ type Props = {
 const TimeMachine = ({
   targetDate,
   imageUrl,
-  transmitting,
   children,
 }: PropsWithChildren<Props>) => {
   const [showImage, setShowImage] = useState(false);
   const [displayDate, setDisplayDate] = useState(new Date());
   const [imageLoaded, setImageLoaded] = useState(false);
   const FIXED_DURATION = 20000; // 10 seconds duration
-
+  const startTime = useMemo(() => Date.now(), []);
   useEffect(() => {
-    if (!targetDate || !transmitting) {
+    if (!targetDate) {
       return;
     }
 
-    const startTime = Date.now();
     const endTime = startTime + FIXED_DURATION;
     const endDate = targetDate.getTime();
     const duration = endDate - startTime;
@@ -51,7 +50,7 @@ const TimeMachine = ({
 
     const interval = setInterval(updateCountdown, 100);
     return () => clearInterval(interval);
-  }, [targetDate, transmitting]);
+  }, [targetDate, startTime]);
 
   const onLoaded = useCallback(() => {
     setImageLoaded(true);
