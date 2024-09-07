@@ -113,11 +113,13 @@ export function LitConnection({ children }: PropsWithChildren<Props>) {
                     uri,
                     expiration,
                     statement:
-                      "I agree to allow LITProtocol to encrypt my message(s) for the future until this session expires.",
+                      "I agree to allow https://nft-to-the-future.shipstone.com to use LITProtocol to encrypt my message(s) for the future until this session expires.",
                     resources: resourceAbilityRequests,
                     walletAddress: wallet?.address as string,
                     nonce: await litNodeClient.getLatestBlockhash(),
                     litNodeClient,
+                    domain: document.location.hostname,
+                    // "nft-to-the-future.shipstone.com",
                   });
 
                   return await generateAuthSig({
