@@ -258,7 +258,7 @@ export function LitConnection({ children }: PropsWithChildren<Props>) {
       setMinted("pending");
       await writeContractAsync(
         {
-          address: "0xa7403DD367290527BF390b0a50D66BB9920d22Ff",
+          address: process.env.NEXT_PUBLIC_NFT_CONTRACT_ADDRESS,
           account: wallet.address,
           args: [
             wallet.address,
