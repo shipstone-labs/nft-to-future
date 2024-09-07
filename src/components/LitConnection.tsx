@@ -87,7 +87,6 @@ export function LitConnection({ children }: PropsWithChildren<Props>) {
         });
 
         await litNodeClient.connect();
-        console.log("Connected to Lit Network");
 
         let _sessionSignatures = sessionSigsMap;
         // biome-ignore lint/correctness/noUnreachable: <explanation>
