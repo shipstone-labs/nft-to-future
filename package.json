@@ -16,6 +16,8 @@
     "@ethersproject/bytes": "^5.7.0",
     "@ethersproject/logger": "^5.7.0",
     "@ethersproject/web": "^5.7.1",
+    "@fortawesome/free-solid-svg-icons": "^6.6.0",
+    "@fortawesome/react-fontawesome": "^0.2.2",
     "@lit-protocol/auth-helpers": "^6.4.10",
     "@lit-protocol/constants": "^6.4.10",
     "@lit-protocol/contracts-sdk": "^6.4.10",
@@ -40,6 +42,7 @@
     "pino-pretty": "^11.2.2",
     "react": "^18",
     "react-dom": "^18",
+    "react-markdown": "^9.0.1",
     "viem": "^2.21.1",
     "wagmi": "^2.12.8"
   },

@@ -35,10 +35,9 @@ const TimeMachine = ({
   children,
 }: PropsWithChildren<Props>) => {
   const [showImage, setShowImage] = useState(false);
-  const [elapsedTime, setElapsedTime] = useState(0);
   const [displayDate, setDisplayDate] = useState(new Date());
   const [imageLoaded, setImageLoaded] = useState(false);
-  const FIXED_DURATION = 10000; // 10 seconds duration
+  const FIXED_DURATION = 20000; // 10 seconds duration
 
   useEffect(() => {
     if (!targetDate) {
@@ -47,14 +46,15 @@ const TimeMachine = ({
 
     const startTime = Date.now();
     const endTime = startTime + FIXED_DURATION;
+    const endDate = targetDate.getTime();
+    const duration = endDate - startTime;
 
     const updateCountdown = () => {
       const now = Date.now();
-      const progress = Math.min((now - startTime) / FIXED_DURATION, 1);
-      setElapsedTime(progress * FIXED_DURATION);
+      const progress = Math.max(now - startTime, endTime);
 
       const simulatedDate = new Date(
-        targetDate.getTime() - (1 - progress) * 1000 * 60 * 60 * 24 * 365
+        Math.round(startTime + (progress / FIXED_DURATION) * duration)
       );
       setDisplayDate(simulatedDate);
 
@@ -90,7 +90,7 @@ const TimeMachine = ({
               className={`${!imageLoaded ? "hidden" : ""}`}
             >
               <img
-                src={imageUrl}
+                src={imageUrl.replace("https://ipfs.io/ipfs/", "/api/proxy/")}
                 alt="Time Machine Reveal"
                 onLoad={onLoaded}
                 className="h-[65%] w-auto object-contain rounded-lg shadow-lg"
@@ -109,7 +109,9 @@ const TimeMachine = ({
             <PaperPlaneAnimation />
 
             <h1 className="text-4xl font-bold text-gray-800">
-              Waiting for the right time...
+              Safely encrypting your message using LIT Protocol to be only
+              decryptable after the date you specified. Along the way creating a
+              nice looking image for your NFT.
             </h1>
           </motion.div>
         )}

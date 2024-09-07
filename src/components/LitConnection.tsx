@@ -37,6 +37,7 @@ type Result = {
     jsonData: string;
     pngUrl: string;
     frameUrl: string;
+    external_url: string;
   };
 };
 
@@ -185,7 +186,6 @@ export function LitConnection({ children }: PropsWithChildren<Props>) {
               }
               return res.json();
             });
-            console.log("Result", output);
             setResult(output);
             setSending(false);
             litNodeClient.disconnect();
@@ -359,6 +359,16 @@ export function LitConnection({ children }: PropsWithChildren<Props>) {
               >
                 Tweet
               </button>
+            ) : null}
+            {result?.result?.external_url ? (
+              <a
+                href={result?.result?.external_url}
+                target="_blank"
+                className="flex items-center px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg shadow hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:opacity-70"
+                rel="noreferrer"
+              >
+                Read
+              </a>
             ) : null}
             <button
               type="button"

@@ -6,11 +6,11 @@ export const getEnv = (name: string): string => {
     throw new Error(
       `${name} ENV is not defined, please define it in the .env file`
     );
-  } else if (env === undefined || env === "") {
-    return "";
-  } else {
-    return env;
   }
+  if (env === undefined || env === "") {
+    return "";
+  }
+  return env;
 };
 
 export const getChainInfo = (

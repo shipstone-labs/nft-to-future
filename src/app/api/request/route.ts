@@ -3,7 +3,6 @@ import { type ClientOptions, OpenAI } from "openai";
 import { Base64 } from "js-base64";
 import imageCompression from "browser-image-compression";
 import abi from "./abi.json";
-import { recordEvent } from "../frame/handler";
 import { LitNetwork } from "@lit-protocol/constants";
 import { LitContracts } from "@lit-protocol/contracts-sdk";
 import { ethers, toBeHex, Wallet } from "ethers";
@@ -76,7 +75,7 @@ async function pinJSONtoIPFS(pinataContent: Record<string, unknown>) {
   });
 }
 
-async function calcFrameUrl(url: string) {
+async function calcProtectedUrl(url: string) {
   const encoder = new TextEncoder();
   const [_ignore, cid] = url.match(/\/ipfs\/(.*?)($|\?)/) || [];
   const hash = Base64.fromUint8Array(
@@ -87,7 +86,7 @@ async function calcFrameUrl(url: string) {
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
     .replace(/=+$/, "");
-  return `https://nft-to-the-future.shipstone.com/api/frame/${cid}/${hash}`;
+  return `https://nft-to-the-future.shipstone.com/read/${cid}/${hash}`;
 }
 
 export async function GET(req: NextRequest) {
@@ -205,14 +204,15 @@ export async function POST(req: NextRequest) {
     );
     let jsonUrl: string | undefined;
     let jsonData: string | undefined;
+    let messageJsonUrl: string | undefined;
     let pngUrl: string | undefined;
+    let external_url: string | undefined;
     let frameUrl: string | undefined;
     if (_imageUrl) {
       try {
         const imageFile = await pinURLtoIPFS(_imageUrl);
         if (imageFile) {
           pngUrl = `https://ipfs.io/ipfs/${imageFile.IpfsHash}`;
-          frameUrl = await calcFrameUrl(pngUrl);
         }
       } catch {
         // ignore
@@ -221,35 +221,65 @@ export async function POST(req: NextRequest) {
     let transaction: `0x${string}` | undefined;
     if (_imageUrl && pngUrl) {
       try {
+        const sendDate = Date.now();
+        const description = `Shipstone Lab's NTF to Future: NFT containing a message readable in the future on ${new Date(
+          new Date(date || Date.now())
+        ).toUTCString()}`;
+        const messageJson = {
+          description,
+          message: _message,
+          date: date || Date.now(),
+          sendDate,
+          image: pngUrl,
+        };
+        ({ IpfsHash: messageJsonUrl } =
+          (await pinJSONtoIPFS(messageJson)) || {});
+        if (!messageJsonUrl) {
+          throw new Error("Failed to pin message JSON to IPFS");
+        }
+
+        messageJsonUrl = `https://ipfs.io/ipfs/${messageJsonUrl}`;
+
+        external_url = await calcProtectedUrl(messageJsonUrl);
+
         const json = {
           name: "NFT to Future!",
-          description: `Shipstone Lab's NTF to Future: Mint an NFT containing a message readable in the future on ${new Date(
-            new Date(date || Date.now())
-          ).toUTCString()}`,
+          description,
           image: pngUrl,
           decimals: 0,
-          attributes: [],
+          attributes: [
+            {
+              trait_type: "Date Received",
+              value: new Date(date || Date.now()).toUTCString(),
+            },
+            {
+              trait_type: "Date Sent",
+              value: new Date(sendDate).toUTCString(),
+            },
+          ],
           properties: {
             creator: {
               name: "Shipstone Labs",
               profile_url: "https://shipstone.com",
             },
+            message: _message,
+            date: date || Date.now(),
           },
           creator: {
             name: "Shipstone Labs",
             profile_url: "https://shipstone.com",
           },
-          external_url: "https://nft-to-future.shipstone.com",
+          external_url,
           // "animation_url": "https://ipfs.io/ipfs/Qm.../sword-animation.mp4",
           background_color: "FFFFFF",
           // "youtube_url": "https://www.youtube.com/watch?v=abcdefg"
         };
+
         ({ IpfsHash: jsonUrl } = (await pinJSONtoIPFS(json)) || {});
 
         if (jsonUrl) {
           jsonUrl = `https://ipfs.io/ipfs/${jsonUrl}`;
           jsonData = bytesToHex(stringToBytes(jsonUrl));
-          frameUrl = await calcFrameUrl(jsonUrl);
         }
       } catch (error) {
         console.error(error);
@@ -262,7 +292,8 @@ export async function POST(req: NextRequest) {
           jsonUrl,
           jsonData,
           pngUrl,
-          frameUrl,
+          messageJsonUrl,
+          external_url,
           message: _message,
           date,
         },
