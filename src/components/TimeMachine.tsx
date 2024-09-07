@@ -80,7 +80,7 @@ const TimeMachine = ({
                 } relative z-10 h-[75%] w-auto inset-0 border-4 border-gray-300 rounded-lg shadow-lg`}
               >
                 <img
-                  src={imageUrl}
+                  src={imageUrl.replace("https://ipfs.io/ipfs/", "/api/proxy/")}
                   alt="Time Machine Reveal"
                   onLoad={onLoaded}
                   className="h-full w-auto object-contain rounded-lg shadow-lg"
