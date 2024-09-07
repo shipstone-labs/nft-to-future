@@ -251,11 +251,13 @@ export async function POST(req: NextRequest) {
           attributes: [
             {
               trait_type: "Date Received",
-              value: new Date(date || Date.now()).toUTCString(),
+              display_type: "date",
+              value: Math.round((date || Date.now()) / 1000),
             },
             {
               trait_type: "Date Sent",
-              value: new Date(sendDate).toUTCString(),
+              display_type: "date",
+              value: Math.round((sendDate || Date.now()) / 1000),
             },
           ],
           properties: {

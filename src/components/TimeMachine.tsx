@@ -36,7 +36,7 @@ const TimeMachine = ({
 
     const updateCountdown = () => {
       const now = Date.now();
-      const progress = Math.max(now - startTime, endTime);
+      const progress = Math.max(now - startTime, FIXED_DURATION);
 
       const simulatedDate = new Date(
         Math.round(startTime + (progress / FIXED_DURATION) * duration)

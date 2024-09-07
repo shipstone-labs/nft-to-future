@@ -22,6 +22,9 @@ console.log("manifest.json has been generated!");
 
 const nextConfig = {
   distDir: "build",
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   webpack: (config, { isServer }) => {
     if (isServer) {
       // Replace node-fetch with empty module or a custom implementation

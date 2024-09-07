@@ -2,15 +2,14 @@ import { LitNetwork } from "@lit-protocol/constants";
 import { AccessControlConditions, LitAbility } from "@lit-protocol/types";
 import { ethers, Wallet } from "ethers";
 import { Base64 } from "js-base64";
-import type { NextApiRequest } from "next";
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { genSession, NETWORK } from "../../../request/litAction";
 import { LitAccessControlConditionResource } from "@lit-protocol/auth-helpers";
 import { LitContracts } from "@lit-protocol/contracts-sdk";
 import { LitNodeClient } from "@lit-protocol/lit-node-client";
 
 export async function GET(
-  req: NextApiRequest,
+  req: NextRequest,
   ctx: { params: { cid: string; hash: string } }
 ) {
   const { cid, hash } = ctx.params;
@@ -84,7 +83,7 @@ export async function GET(
     data.publicMessage = decoder.decode(decryptedData);
   } catch (error) {
     console.error("Error during execution", error);
-    data.error = error.message;
+    data.error = (error as { message: string }).message;
   } finally {
     await litNodeClient.disconnect();
   }

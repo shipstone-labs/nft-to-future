@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { PassThrough } from "node:stream";
 
-export async function GET(req) {
+export async function GET(req: NextRequest) {
   const response = await fetch(
     `${process.env.PINATA_GATEWAY}/ipfs/${req.nextUrl.pathname.replace(
       "/api/proxy/",
@@ -19,8 +19,8 @@ export async function GET(req) {
   }
 
   // Collect headers from the response
-  const headers = {};
-  for (const [key, value] of response.headers.entries()) {
+  const headers: Record<string, string> = {};
+  for (const [key, value] of Array.from(response.headers.entries())) {
     if (/content-type/i.test(key)) {
       headers[key] = value;
     }
