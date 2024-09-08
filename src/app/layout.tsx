@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import clx from "classnames";
 import { appConfig } from "./config.mjs";
+import PlausibleProvider from "next-plausible";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -25,11 +26,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
-        <div className="background text-gray-900" />
-        {children}
-      </body>
-    </html>
+    <PlausibleProvider domain="nft-to-the-future.shipstone.com">
+      <html lang="en">
+        <body className={inter.className}>
+          <div className="background text-gray-900" />
+          {children}
+        </body>
+      </html>
+    </PlausibleProvider>
   );
 }

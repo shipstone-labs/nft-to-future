@@ -5,11 +5,12 @@ import {
   getDefaultConfig,
   RainbowKitProvider,
 } from "@rainbow-me/rainbowkit";
-import { http, WagmiProvider } from "wagmi";
+import { http, useAccountEffect, useWalletClient, WagmiProvider } from "wagmi";
 import { base } from "wagmi/chains";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import "@rainbow-me/rainbowkit/styles.css";
 import type { PropsWithChildren } from "react";
+import { usePlausible } from "next-plausible";
 
 const config = getDefaultConfig({
   appName: "LIT example",
@@ -24,6 +25,15 @@ const queryClient = new QueryClient();
 
 // biome-ignore lint/complexity/noBannedTypes: <explanation>
 export default function Wallet({ children }: PropsWithChildren<{}>) {
+  const plausible = usePlausible();
+  const wallet = useAccountEffect({
+    onConnect: () => {
+      plausible("Connected", { props: { reason: "Wallet" } });
+    },
+    onDisconnect: () => {
+      plausible("Disconnected", { props: { reason: "Wallet" } });
+    },
+  });
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>

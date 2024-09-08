@@ -158,3 +158,21 @@ export const genSession = async (
 
   return sessionSigs;
 };
+
+export async function recordEvent(
+  event: Record<string, unknown>,
+  headers: Headers
+) {
+  const object = Object.fromEntries(headers.entries());
+  return fetch("https://plausible.io/api/event", {
+    method: "POST",
+    headers: {
+      ...object,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      ...event,
+      domain: "nft-to-the-future.shipstone.com",
+    }),
+  });
+}

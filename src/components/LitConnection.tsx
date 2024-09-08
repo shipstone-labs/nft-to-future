@@ -31,6 +31,7 @@ import {
 } from "react";
 import { MessageForm } from "./MessageForm";
 import TimeMachine from "./TimeMachine";
+import { usePlausible } from "next-plausible";
 
 // biome-ignore lint/complexity/noBannedTypes: <explanation>
 type Props = {};
@@ -54,6 +55,7 @@ export function LitConnection({ children }: PropsWithChildren<Props>) {
   const [sending, setSending] = useState(false);
   const [transmitting, setTransmitting] = useState(false);
   const [targetDate, setTargetDate] = useState<Date>();
+  const plausible = usePlausible();
   const signer = useSignMessage();
   const wallet = useAccount();
   const [showTimeMachine, setShowTimeMachine] = useState(false);
@@ -75,16 +77,18 @@ export function LitConnection({ children }: PropsWithChildren<Props>) {
       fetch("/api/request")
         .then((res) => res.json())
         .then(({ address }) => {
+          plausible("RemoteAddress");
           setRemoteAddress(address);
         });
     }
-  }, [remoteAddress]);
+  }, [remoteAddress, plausible]);
 
   const onSend = useCallback(
     async (message: string, date: Date) => {
       setTargetDate(date);
       setSending(true);
       try {
+        plausible("Sending");
         // More information about the available Lit Networks: https://developer.litprotocol.com/category/networks
         const litNodeClient = new LitNodeClient({
           litNetwork: LitNetwork.DatilDev,
@@ -138,6 +142,7 @@ export function LitConnection({ children }: PropsWithChildren<Props>) {
                   });
                 },
               });
+              plausible("Signed");
               setSessionSigsMap(_sessionSignatures);
             }
 
@@ -185,6 +190,7 @@ export function LitConnection({ children }: PropsWithChildren<Props>) {
               date: date.getTime(),
             };
             setTransmitting(true);
+            plausible("Encrypted");
             const output = await fetch("/api/request", {
               method: "POST",
               headers: {
@@ -197,6 +203,7 @@ export function LitConnection({ children }: PropsWithChildren<Props>) {
               }
               return res.json();
             });
+            plausible("Generated");
             setResult(output);
             setSending(false);
             setTransmitting(false);
@@ -215,7 +222,7 @@ export function LitConnection({ children }: PropsWithChildren<Props>) {
         console.error("Failed to connect to Lit Network:", error);
       }
     },
-    [signer, wallet, sessionSigsMap, remoteAddress]
+    [signer, wallet, sessionSigsMap, remoteAddress, plausible]
   );
 
   const onReset = useCallback(() => {
@@ -261,6 +268,7 @@ export function LitConnection({ children }: PropsWithChildren<Props>) {
         },
       ];
       setMinted("pending");
+      plausible("Minting");
       await writeContractAsync(
         {
           address: process.env.NEXT_PUBLIC_NFT_CONTRACT_ADDRESS,
@@ -276,17 +284,19 @@ export function LitConnection({ children }: PropsWithChildren<Props>) {
         } as any,
         {
           onSuccess: (transaction) => {
+            plausible("Minted");
             setTransactionHash(transaction);
           },
           onError: (...args) => {
             console.log("error", args);
+            plausible("MintError", { props: { error: args[0].message } });
             setMinted("error");
           },
         }
       );
     };
     doMint();
-  }, [minted, wallet, result, writeContractAsync]);
+  }, [minted, wallet, result, writeContractAsync, plausible]);
   const waitResults = useWaitForTransactionReceipt({
     hash: transactionHash as `0x${string}`,
     confirmations: 2,
@@ -338,18 +348,19 @@ export function LitConnection({ children }: PropsWithChildren<Props>) {
             ],
           })
         : null;
-      setMinted(
-        `https://opensea.io/assets/base/${log.address || ""}/${
-          info?.args?.id || ""
-        }`
-      );
+      const url = `https://opensea.io/assets/base/${log.address || ""}/${
+        info?.args?.id || ""
+      }`;
+      plausible("MintComplete", { props: { url, tokenId: info?.args?.id } });
+      setMinted(url);
       setTransactionHash(undefined);
     }
-  }, [waitResults]);
+  }, [waitResults, plausible]);
 
   const onCast = useCallback(
     (e: MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation();
+      plausible("Cast", { props: { url: result?.result?.frameUrl } });
       if (isCompose) {
         window.parent.postMessage(
           {
@@ -372,11 +383,12 @@ export function LitConnection({ children }: PropsWithChildren<Props>) {
         );
       }
     },
-    [isCompose, result, text]
+    [isCompose, result, text, plausible]
   );
   const onTweet = useCallback(
     (e: MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation();
+      plausible("Tweet", { props: { url: result?.result?.frameUrl } });
 
       window.open(
         `https://x.com/intent/tweet?url=${
@@ -385,7 +397,7 @@ export function LitConnection({ children }: PropsWithChildren<Props>) {
         "_blank"
       );
     },
-    [result, text]
+    [result, text, plausible]
   );
 
   if (!wallet.isConnected || !remoteAddress) {
