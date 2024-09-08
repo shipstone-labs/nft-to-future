@@ -224,7 +224,7 @@ export async function POST(req: NextRequest) {
       try {
         const sendDate = Date.now();
         const description = `Shipstone Lab's NTF to Future: NFT containing a message readable in the future on ${new Date(
-          new Date(date || Date.now())
+          date || Date.now()
         ).toUTCString()}`;
         const messageJson = {
           description,
