@@ -359,7 +359,9 @@ export function LitConnection({ children }: PropsWithChildren<Props>) {
       const url = `https://opensea.io/assets/base/${log.address || ""}/${
         info?.args?.id || ""
       }`;
-      plausible("MintComplete", { props: { url, tokenId: info?.args?.id } });
+      plausible("MintComplete", {
+        props: { url, tokenId: info?.args?.id?.toString() },
+      });
       setMinted(url);
       setTransactionHash(undefined);
     }
