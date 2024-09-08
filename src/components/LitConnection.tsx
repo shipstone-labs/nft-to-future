@@ -66,6 +66,14 @@ export function LitConnection({ children }: PropsWithChildren<Props>) {
       : false;
   const [minted, setMinted] = useState<string | null | undefined>();
   const [transactionHash, setTransactionHash] = useState<string | undefined>();
+  useAccountEffect({
+    onConnect: () => {
+      plausible("Connected", { props: { reason: "Wallet" } });
+    },
+    onDisconnect: () => {
+      plausible("Disconnected", { props: { reason: "Wallet" } });
+    },
+  });
   const text = useMemo(
     () =>
       `I sent a message to the future to be visible at ${targetDate?.toUTCString()}.`,
